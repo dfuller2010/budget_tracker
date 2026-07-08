@@ -1,0 +1,24 @@
+{
+  "categories": [
+    "Food",
+    "Transport",
+    "Bills",
+    "Entertainment",
+    "Other",
+    "Medication"
+  ],
+  "expenses": [
+    {
+      "amount": 120.0,
+      "category": "Bills",
+      "description": "Georgia Power (Electricity)",
+      "date": "2026-07-08"
+    },
+    {
+      "amount": 35.0,
+      "category": "Transport",
+      "description": "Gas",
+      "date": "2026-07-08"
+    }
+  ]
+}
