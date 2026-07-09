@@ -1,3 +1,15 @@
+"""
+Simple terminal-based budget tracker.
+
+Features:
+- store categories and expenses in `expenses.json`
+- add/view/delete expenses
+- add categories and run a monthly report
+
+This module is lightweight and uses plain JSON for persistence so it
+is easy to inspect or migrate later.
+"""
+
 import json
 import os
 from datetime import datetime
@@ -6,15 +18,25 @@ from datetime import datetime
 # -- Data ----------------------------------------------------------------------
  
 def load_data():
+    """Load budget data from `expenses.json` if it exists.
+
+    Returns a dict with keys `categories` and `expenses`.
+    If the file does not exist a default structure is returned.
+    """
     if os.path.exists("expenses.json"):
         with open("expenses.json", "r") as f:
             return json.load(f)
+    # Default dataset when no file is present
     return {
         "categories": ["Food", "Transport", "Bills", "Entertainment", "Other"],
         "expenses": []
     }
  
 def save_data(data):
+    """Persist the given data dictionary to `expenses.json`.
+
+    Uses a human-readable JSON indent for easier manual edits.
+    """
     with open("expenses.json", "w") as f:
         json.dump(data, f, indent=2)
  
@@ -22,9 +44,14 @@ def save_data(data):
 # -- Categories ----------------------------------------------------------------
  
 def get_categories(data):
+    """Return the list of category names from the data dict."""
     return data["categories"]
  
 def add_category(data):
+    """Prompt the user to add a new category and save it.
+
+    Normalizes the name with `title()` and avoids duplicates.
+    """
     categories = get_categories(data)
     print("\nCurrent categories:", ", ".join(categories))
     name = input("New category name: ").strip().title()
@@ -42,9 +69,13 @@ def add_category(data):
 # -- Expenses ------------------------------------------------------------------
  
 def add_expense(data):
+    """Interactively collect expense fields and append to data.
+
+    Validates amount and date formats, then saves the data file.
+    """
     categories = get_categories(data)
- 
-    # Amount
+
+    # Amount: require a positive float
     while True:
         try:
             amount = float(input("\nAmount: $"))
@@ -54,8 +85,8 @@ def add_expense(data):
             break
         except ValueError:
             print("Please enter a number.")
- 
-    # Category
+
+    # Category: present numbered choices
     print("\nCategories:")
     for i, cat in enumerate(categories, 1):
         print(f"  {i}. {cat}")
@@ -69,11 +100,11 @@ def add_expense(data):
                 print(f"Enter a number between 1 and {len(categories)}.")
         except ValueError:
             print("Please enter a number.")
- 
-    # Description
+
+    # Description: free-form text
     description = input("Description: ").strip()
- 
-    # Date
+
+    # Date: allow empty input to use today's date; validate format otherwise
     today = datetime.today().strftime("%Y-%m-%d")
     while True:
         date_input = input(f"Date (YYYY-MM-DD) [press Enter for today, {today}]: ").strip()
@@ -86,7 +117,8 @@ def add_expense(data):
             break
         except ValueError:
             print("Invalid date. Use YYYY-MM-DD format, e.g. 2026-06-15.")
- 
+
+    # Construct and persist the new expense
     expense = {
         "amount": amount,
         "category": category,
@@ -99,17 +131,23 @@ def add_expense(data):
     return data
  
 def view_all_expenses(data):
+    """Print all recorded expenses in a simple list.
+
+    Tries to sort by date, then amount (descending) for readability.
+    """
     expenses = data.get("expenses", [])
     if not expenses:
         print("\nNo expenses recorded.")
         return data
 
-    # Sort by date then amount
+    # Sort by date then amount (descending)
     try:
         sorted_expenses = sorted(expenses, key=lambda e: (e.get("date", ""), -float(e.get("amount", 0))))
     except Exception:
+        # If any expense records are malformed, fall back to unsorted
         sorted_expenses = list(expenses)
 
+    # Display each expense with an index for possible deletion
     print()
     for i, e in enumerate(sorted_expenses, 1):
         amt = float(e.get("amount", 0))
@@ -120,6 +158,11 @@ def view_all_expenses(data):
     return data
  
 def view_month_expenses(data):
+    """Show expenses filtered to a specific month (YYYY-MM).
+
+    If the user presses Enter the current month is used.
+    Prints each matching expense and a monthly total.
+    """
     from datetime import datetime as _dt
     today = _dt.today()
     default = today.strftime("%Y-%m")
@@ -128,6 +171,7 @@ def view_month_expenses(data):
         month = default
     else:
         try:
+            # Validate that the input represents a valid month
             _dt.strptime(month_input + "-01", "%Y-%m-%d")
             month = month_input
         except ValueError:
@@ -149,11 +193,17 @@ def view_month_expenses(data):
     return data
  
 def delete_expense(data):
+    """Delete an expense by its displayed index.
+
+    Shows all expenses first so the user can choose the correct one.
+    Press Enter to cancel deletion.
+    """
     expenses = data.get("expenses", [])
     if not expenses:
         print("\nNo expenses to delete.")
         return data
 
+    # Show existing expenses with indices
     view_all_expenses(data)
     try:
         choice = input("\nEnter expense number to delete (or press Enter to cancel): ").strip()
@@ -175,6 +225,10 @@ def delete_expense(data):
 # -- Reports -------------------------------------------------------------------
  
 def monthly_report(data):
+    """Aggregate expenses by category for a given month and print totals.
+
+    Prompts for a month in `YYYY-MM` format and prints a simple report.
+    """
     from datetime import datetime as _dt
     default = _dt.today().strftime("%Y-%m")
     month_input = input(f"Report month (YYYY-MM) [press Enter for {default}]: ").strip()
@@ -188,6 +242,7 @@ def monthly_report(data):
             print("Invalid month format. Use YYYY-MM.")
             return data
 
+    # Sum amounts per category for the requested month
     totals = {}
     for e in data.get("expenses", []):
         if not e.get("date", "").startswith(month):
@@ -211,6 +266,10 @@ def monthly_report(data):
 # -- Main ----------------------------------------------------------------------
  
 def main():
+    """Main interactive loop for the budget tracker CLI.
+
+    Loads data, presents a simple numeric menu, and dispatches actions.
+    """
     data = load_data()
     actions = {
         "1": lambda d: add_expense(d),
